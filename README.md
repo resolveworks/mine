@@ -1,4 +1,4 @@
-# pi-web-fetch
+# mine
 
 A [pi](https://github.com/earendil-works/pi-coding-agent) extension that adds a `web_fetch` tool for fetching web pages as clean markdown. It launches a real Chromium browser via [Playwright](https://playwright.dev), so JavaScript-rendered pages are fully supported.
 
