@@ -2,81 +2,23 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { spawn, type ChildProcess } from "node:child_process";
-import fs from "node:fs";
-import path from "node:path";
-import { createRequire } from "node:module";
+import { getInjectableScript } from "./idcac.js";
 
 let browser: import("playwright").Browser | null = null;
 let xvfb: ChildProcess | null = null;
 let display: string | null = null;
 
-const requireFromHere = createRequire(import.meta.url);
-let autoconsentScript: string | null = null;
-function getAutoconsentScript(): string {
-  if (autoconsentScript !== null) return autoconsentScript;
-  // package.json `exports` blocks direct access to dist/, so resolve via
-  // an exposed file (rules.json) and walk to the sibling dist/ dir.
-  const rulesPath = requireFromHere.resolve(
-    "@duckduckgo/autoconsent/rules/rules.json",
-  );
-  const scriptPath = path.join(
-    path.dirname(rulesPath),
-    "..",
-    "dist",
-    "autoconsent.playwright.js",
-  );
-  return (autoconsentScript = fs.readFileSync(scriptPath, "utf8"));
-}
-
 async function dismissCookieBanners(
   page: import("playwright").Page,
-  timeout = 3000,
 ): Promise<void> {
-  const script = getAutoconsentScript();
-  let resolveDone!: () => void;
-  const done = new Promise<void>((r) => {
-    resolveDone = r;
+  const script = getInjectableScript();
+  await page.evaluate(script).catch(() => {});
+  for (const frame of page.frames()) {
+    await frame.evaluate(script).catch(() => {});
+  }
+  page.on("framenavigated", (frame) => {
+    frame.evaluate(script).catch(() => {});
   });
-
-  await page.exposeBinding(
-    "autoconsentSendMessage",
-    async ({ frame }, msg: any) => {
-      if (msg.type === "init") {
-        await frame.evaluate(
-          `autoconsentReceiveMessage({ type: "initResp", config: ${JSON.stringify(
-            {
-              enabled: true,
-              autoAction: "optOut",
-              disabledCmps: [],
-              enablePrehide: false,
-              detectRetries: 20,
-              enableCosmeticRules: true,
-            },
-          )} })`,
-        );
-      } else if (msg.type === "eval") {
-        const result = await frame.evaluate(msg.code);
-        await frame.evaluate(
-          `autoconsentReceiveMessage({ id: ${JSON.stringify(msg.id)}, type: "evalResp", result: ${JSON.stringify(result)} })`,
-        );
-      } else if (msg.type === "autoconsentDone") {
-        resolveDone();
-      }
-    },
-  );
-
-  const inject = (
-    target: import("playwright").Page | import("playwright").Frame,
-  ) => target.evaluate(script).catch(() => {});
-
-  await inject(page);
-  page.frames().forEach(inject);
-  page.on("framenavigated", inject);
-
-  await Promise.race([
-    done,
-    new Promise<void>((r) => setTimeout(r, timeout)),
-  ]);
 }
 
 async function startXvfb(): Promise<string> {
