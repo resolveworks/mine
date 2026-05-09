@@ -20,14 +20,14 @@ export default function (pi: ExtensionAPI) {
   });
 
   pi.registerTool({
-    name: "fetch_page",
-    label: "Fetch Page",
+    name: "web_fetch",
+    label: "Web Fetch",
     description:
       "Fetch a webpage and return its main readable content as clean markdown. Uses a real browser to handle JavaScript-rendered pages.",
     promptSnippet:
       "Fetch and read the content of a web page as clean markdown",
     promptGuidelines: [
-      "Use fetch_page when the user asks you to read, fetch, or look up the content of a specific URL.",
+      "Use web_fetch when the user asks you to read, fetch, or look up the content of a specific URL.",
     ],
     parameters: Type.Object({
       url: Type.String({ description: "URL of the webpage to fetch" }),
