@@ -1,19 +1,63 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
+import { spawn, type ChildProcess } from "node:child_process";
 
 let browser: import("playwright").Browser | null = null;
+let xvfb: ChildProcess | null = null;
+let display: string | null = null;
+
+async function startXvfb(): Promise<string> {
+  if (process.platform !== "linux") {
+    throw new Error(
+      "mine requires Linux (uses Xvfb to render Chrome on a virtual display).",
+    );
+  }
+  return new Promise((resolve, reject) => {
+    const child = spawn(
+      "Xvfb",
+      ["-displayfd", "1", "-screen", "0", "1920x1080x24", "-nolisten", "tcp"],
+      { stdio: ["ignore", "pipe", "pipe"] },
+    );
+    let buf = "";
+    const onExit = (code: number | null) =>
+      reject(
+        new Error(
+          `Xvfb exited (${code}) before reporting a display. Install xorg-server-xvfb (Arch) or xvfb (Debian/Ubuntu/Fedora).`,
+        ),
+      );
+    child.once("error", (err) =>
+      reject(
+        new Error(
+          `Failed to spawn Xvfb: ${err.message}. Install xorg-server-xvfb (Arch) or xvfb (Debian/Ubuntu/Fedora).`,
+        ),
+      ),
+    );
+    child.once("exit", onExit);
+    child.stdout!.on("data", (chunk: Buffer) => {
+      buf += chunk.toString();
+      const m = buf.match(/(\d+)\s/);
+      if (m) {
+        child.off("exit", onExit);
+        xvfb = child;
+        resolve(`:${m[1]}`);
+      }
+    });
+  });
+}
 
 async function getBrowser() {
   if (!browser) {
+    if (!display) display = await startXvfb();
     const { chromium } = await import("playwright");
-    // Match Playwright MCP stealth config:
-    // - channel: 'chrome' uses system Chrome (harder to fingerprint than bundled Chromium)
-    // - --disable-blink-features=AutomationControlled prevents navigator.webdriver detection
     browser = await chromium.launch({
-      channel: 'chrome',
+      channel: "chrome",
       headless: false,
-      args: ['--disable-blink-features=AutomationControlled'],
+      args: [
+        "--ozone-platform=x11",
+        "--disable-blink-features=AutomationControlled",
+      ],
+      env: { ...process.env, DISPLAY: display } as NodeJS.ProcessEnv,
     });
   }
   return browser;
@@ -24,6 +68,11 @@ export default function (pi: ExtensionAPI) {
     if (browser) {
       await browser.close();
       browser = null;
+    }
+    if (xvfb) {
+      xvfb.kill("SIGTERM");
+      xvfb = null;
+      display = null;
     }
   });
 
