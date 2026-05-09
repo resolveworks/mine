@@ -6,7 +6,8 @@ A [pi](https://github.com/earendil-works/pi-coding-agent) extension that adds a 
 
 1. Opens the target URL in a headed Chrome instance
 2. Waits for the page's `load` event (JS-heavy SPAs work fine)
-3. Extracts the page content and converts it to clean markdown using [Defuddle](https://github.com/kepano/defuddle)
+3. Automatically dismisses cookie consent banners using [DuckDuckGo Autoconsent](https://github.com/duckduckgo/autoconsent)
+4. Extracts the page content and converts it to clean markdown using [Defuddle](https://github.com/kepano/defuddle)
 
 ## Requirements
 

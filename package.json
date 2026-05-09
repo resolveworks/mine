@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@duckduckgo/autoconsent": "^14.75.0",
     "defuddle": "^0.18.1",
     "linkedom": "^0.18.12",
     "playwright": "^1.59.0"
