@@ -25,8 +25,7 @@ export default function (pi: ExtensionAPI) {
     label: "Web Fetch",
     description:
       "Fetch a webpage and return its main readable content as clean markdown. Uses a real browser to handle JavaScript-rendered pages.",
-    promptSnippet:
-      "Fetch and read the content of a web page as clean markdown",
+    promptSnippet: "Fetch and read the content of a web page as clean markdown",
     promptGuidelines: [
       "Use web_fetch when the user asks you to read, fetch, or look up the content of a specific URL.",
     ],
@@ -51,7 +50,7 @@ export default function (pi: ExtensionAPI) {
 
       try {
         await page.goto(url, {
-          waitUntil: "networkidle",
+          waitUntil: "load",
           timeout: 30000,
         });
 
@@ -68,7 +67,7 @@ export default function (pi: ExtensionAPI) {
         };
       } catch (error: any) {
         throw new Error(
-          `Failed to fetch ${url}: ${error.message || String(error)}`
+          `Failed to fetch ${url}: ${error.message || String(error)}`,
         );
       } finally {
         signal?.removeEventListener("abort", onAbort);
