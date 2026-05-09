@@ -1,6 +1,6 @@
 # mine
 
-A [pi](https://github.com/earendil-works/pi-coding-agent) extension that adds a `web_fetch` tool for fetching web pages as clean markdown. It launches a real Chrome browser via [Playwright](https://playwright.dev) on a virtual X display ([Xvfb](https://www.x.org/releases/X11R7.7/doc/man/man1/Xvfb.1.xhtml)), so JavaScript-rendered pages are fully supported and you never see the browser window.
+A [pi](https://github.com/earendil-works/pi-coding-agent) extension that adds a `web_fetch` tool for fetching web pages as clean markdown. It launches Chrome via [Playwright](https://playwright.dev) on a virtual X display ([Xvfb](https://www.x.org/releases/X11R7.7/doc/man/man1/Xvfb.1.xhtml)).
 
 ## How it works
 
@@ -13,7 +13,7 @@ A [pi](https://github.com/earendil-works/pi-coding-agent) extension that adds a 
 
 mine renders Chrome to a virtual X display so its window never appears on screen. **Linux only.** You need two things on your system:
 
-- **Google Chrome** — Playwright launches the system Chrome (`channel: "chrome"`) for better fingerprint than bundled Chromium. Install from [google.com/chrome](https://www.google.com/chrome/) or via your package manager.
+- **Google Chrome** — Playwright launches the system Chrome (`channel: "chrome"`). Install from [google.com/chrome](https://www.google.com/chrome/) or via your package manager.
 - **Xvfb** — virtual framebuffer X server.
 
 | Distro | Xvfb install |
