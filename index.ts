@@ -7,7 +7,14 @@ let browser: import("playwright").Browser | null = null;
 async function getBrowser() {
   if (!browser) {
     const { chromium } = await import("playwright");
-    browser = await chromium.launch();
+    // Match Playwright MCP stealth config:
+    // - channel: 'chrome' uses system Chrome (harder to fingerprint than bundled Chromium)
+    // - --disable-blink-features=AutomationControlled prevents navigator.webdriver detection
+    browser = await chromium.launch({
+      channel: 'chrome',
+      headless: false,
+      args: ['--disable-blink-features=AutomationControlled'],
+    });
   }
   return browser;
 }
