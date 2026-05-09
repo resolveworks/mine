@@ -11,21 +11,14 @@ A [pi](https://github.com/earendil-works/pi-coding-agent) extension that adds a 
 ## Install
 
 ```bash
-git clone git@github.com:resolveworks/mine.git
-cd mine && pnpm install
+pi install git:github.com/resolveworks/mine
 ```
 
-Then add to your pi config (`.pirc.json` or `package.json`):
+For project-local install:
 
-```json
-{
-  "pi": {
-    "extensions": ["./path/to/mine/index.ts"]
-  }
-}
+```bash
+pi install git:github.com/resolveworks/mine -l
 ```
-
-Playwright's Chromium binary is installed automatically via the `postinstall` script.
 
 ## Usage
 
