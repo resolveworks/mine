@@ -1,6 +1,6 @@
 # mine
 
-A [pi](https://github.com/earendil-works/pi-coding-agent) extension that adds a `web_fetch` tool for fetching web pages as clean markdown. It launches Chrome via [Playwright](https://playwright.dev) on a virtual X display ([Xvfb](https://www.x.org/releases/X11R7.7/doc/man/man1/Xvfb.1.xhtml)).
+A [pi](https://github.com/earendil-works/pi) extension that adds a `web_fetch` tool for fetching web pages as clean markdown. It launches Chrome via [Playwright](https://playwright.dev) on a virtual X display ([Xvfb](https://www.x.org/releases/X11R7.7/doc/man/man1/Xvfb.1.xhtml)).
 
 ## How it works
 
