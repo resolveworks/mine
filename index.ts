@@ -1,4 +1,5 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 
 let browser: import("playwright").Browser | null = null;
@@ -32,6 +33,11 @@ export default function (pi: ExtensionAPI) {
     parameters: Type.Object({
       url: Type.String({ description: "URL of the webpage to fetch" }),
     }),
+    renderCall(args, theme, _context) {
+      let text = theme.fg("toolTitle", theme.bold("web_fetch "));
+      text += theme.fg("accent", args.url);
+      return new Text(text, 0, 0);
+    },
     async execute(_toolCallId, params, signal, _onUpdate, _ctx) {
       const { url } = params as { url: string };
 
