@@ -6,7 +6,7 @@ A [pi](https://github.com/earendil-works/pi-coding-agent) extension that adds a 
 
 1. Opens the target URL in a headed Chrome instance
 2. Waits for the page's `load` event (JS-heavy SPAs work fine)
-3. Automatically dismisses cookie consent banners using [DuckDuckGo Autoconsent](https://github.com/duckduckgo/autoconsent)
+3. Automatically dismisses cookie consent banners using [I Still Don't Care About Cookies](https://github.com/OhMyGuus/I-Still-Dont-Care-About-Cookies)
 4. Extracts the page content and converts it to clean markdown using [Defuddle](https://github.com/kepano/defuddle)
 
 ## Requirements
