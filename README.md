@@ -6,12 +6,12 @@ A [pi](https://github.com/earendil-works/pi) extension that adds a `web_fetch` t
 
 1. Opens the target URL in a headed Chrome instance
 2. Waits for the page's `load` event (JS-heavy SPAs work fine)
-3. Automatically dismisses cookie consent banners using [I Still Don't Care About Cookies](https://github.com/OhMyGuus/I-Still-Dont-Care-About-Cookies)
+3. Cookie consent banners are dismissed by [I Still Don't Care About Cookies](https://github.com/OhMyGuus/I-Still-Dont-Care-About-Cookies), force-installed via Chrome enterprise policy (see below)
 4. Extracts the page content and converts it to clean markdown using [Defuddle](https://github.com/kepano/defuddle)
 
 ## Requirements
 
-mine renders Chrome to a virtual X display so its window never appears on screen. **Linux only.** You need two things on your system:
+mine renders Chrome to a virtual X display so its window never appears on screen. **Linux only.** You need on your system:
 
 - **Google Chrome** — Playwright launches the system Chrome (`channel: "chrome"`). Install from [google.com/chrome](https://www.google.com/chrome/) or via your package manager.
 - **Xvfb** — virtual framebuffer X server.
@@ -23,6 +23,20 @@ mine renders Chrome to a virtual X display so its window never appears on screen
 | Fedora/RHEL | `sudo dnf install xorg-x11-server-Xvfb` |
 
 The extension manages the Xvfb process itself — start, display assignment, and shutdown are all automatic.
+
+### One-time: force-install the cookie-banner extension
+
+Drop this JSON into `/etc/opt/chrome/policies/managed/idcac.json` (requires sudo):
+
+```json
+{
+  "ExtensionInstallForcelist": [
+    "edibdbjcniadpccecjdfdjjppcpchdlm"
+  ]
+}
+```
+
+Chrome reads the policy on launch and pulls [I Still Don't Care About Cookies](https://chromewebstore.google.com/detail/i-still-dont-care-about-c/edibdbjcniadpccecjdfdjjppcpchdlm) from the Chrome Web Store. The policy is system-wide, so every Chrome instance on the machine will have the extension active.
 
 ## Install
 

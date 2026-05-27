@@ -2,24 +2,10 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { spawn, type ChildProcess } from "node:child_process";
-import { getInjectableScript } from "./idcac.js";
 
 let browser: import("playwright").Browser | null = null;
 let xvfb: ChildProcess | null = null;
 let display: string | null = null;
-
-async function dismissCookieBanners(
-  page: import("playwright").Page,
-): Promise<void> {
-  const script = getInjectableScript();
-  await page.evaluate(script).catch(() => {});
-  for (const frame of page.frames()) {
-    await frame.evaluate(script).catch(() => {});
-  }
-  page.on("framenavigated", (frame) => {
-    frame.evaluate(script).catch(() => {});
-  });
-}
 
 async function startXvfb(): Promise<string> {
   if (process.platform !== "linux") {
@@ -123,8 +109,6 @@ export default function (pi: ExtensionAPI) {
           waitUntil: "load",
           timeout: 30000,
         });
-
-        await dismissCookieBanners(page).catch(() => {});
 
         const html = await page.content();
         const { parseHTML } = await import("linkedom");
