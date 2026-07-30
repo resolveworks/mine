@@ -8,7 +8,8 @@ import {
 import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { spawn, type ChildProcess } from "node:child_process";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { randomBytes } from "node:crypto";
+import { writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -147,8 +148,8 @@ export default function (pi: ExtensionAPI) {
         let output = markdown;
 
         if (truncation.truncated) {
-          const tempDir = await mkdtemp(join(tmpdir(), "mine-"));
-          const fullOutputPath = join(tempDir, "page.md");
+          const id = randomBytes(8).toString("hex");
+          const fullOutputPath = join(tmpdir(), `pi-mine-${id}.md`);
           await withFileMutationQueue(fullOutputPath, () =>
             writeFile(fullOutputPath, markdown, "utf8"),
           );
