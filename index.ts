@@ -1,11 +1,30 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import {
+  DEFAULT_MAX_BYTES,
+  DEFAULT_MAX_LINES,
+  truncateHead,
+  type ExtensionAPI,
+  withFileMutationQueue,
+} from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { spawn, type ChildProcess } from "node:child_process";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 let browser: import("playwright").Browser | null = null;
 let xvfb: ChildProcess | null = null;
 let display: string | null = null;
+
+interface WebFetchDetails {
+  truncated: boolean;
+  length: number;
+  fullOutputPath?: string;
+}
+
+function getTruncationNotice(fullOutputPath: string): string {
+  return `[Content truncated. Full content saved to: ${fullOutputPath}]`;
+}
 
 async function startXvfb(): Promise<string> {
   if (process.platform !== "linux") {
@@ -80,7 +99,7 @@ export default function (pi: ExtensionAPI) {
     name: "web_fetch",
     label: "Web Fetch",
     description:
-      "Fetch a webpage and return its main readable content as clean markdown. Uses a real browser to handle JavaScript-rendered pages.",
+      `Fetch a webpage and return its main readable content as clean markdown. Uses a real browser to handle JavaScript-rendered pages. Output is limited to ${DEFAULT_MAX_BYTES / 1024}KB or ${DEFAULT_MAX_LINES} lines (whichever is hit first); full content is saved to a temporary file when truncated.`,
     promptSnippet: "Fetch and read the content of a web page as clean markdown",
     promptGuidelines: [
       "Use web_fetch when the user asks you to read, fetch, or look up the content of a specific URL.",
@@ -116,10 +135,31 @@ export default function (pi: ExtensionAPI) {
 
         const { document } = parseHTML(html);
         const result = await Defuddle(document, url, { markdown: true });
+        const markdown = result.content;
+        const truncation = truncateHead(markdown, {
+          maxBytes: DEFAULT_MAX_BYTES,
+          maxLines: DEFAULT_MAX_LINES,
+        });
+        const details: WebFetchDetails = {
+          truncated: truncation.truncated,
+          length: markdown.length,
+        };
+        let output = markdown;
+
+        if (truncation.truncated) {
+          const tempDir = await mkdtemp(join(tmpdir(), "mine-"));
+          const fullOutputPath = join(tempDir, "page.md");
+          await withFileMutationQueue(fullOutputPath, () =>
+            writeFile(fullOutputPath, markdown, "utf8"),
+          );
+
+          details.fullOutputPath = fullOutputPath;
+          output = `${truncation.content}\n\n${getTruncationNotice(fullOutputPath)}`;
+        }
 
         return {
-          content: [{ type: "text", text: result.content }],
-          details: {},
+          content: [{ type: "text", text: output }],
+          details,
         };
       } catch (error: any) {
         throw new Error(
@@ -129,6 +169,30 @@ export default function (pi: ExtensionAPI) {
         signal?.removeEventListener("abort", onAbort);
         await context.close();
       }
+    },
+    renderResult(result, _options, theme, _context) {
+      const details = result.details as WebFetchDetails | undefined;
+      const textContent = result.content.find((item) => item.type === "text");
+      let output = textContent?.type === "text" ? textContent.text : "";
+      let warning = "";
+
+      if (details?.truncated && details.fullOutputPath) {
+        const notice = getTruncationNotice(details.fullOutputPath);
+        if (output.endsWith(notice)) {
+          output = output.slice(0, -notice.length).trimEnd();
+        }
+        warning = theme.fg("warning", notice);
+      }
+
+      const styledOutput = output
+        .split("\n")
+        .map((line) => theme.fg("toolOutput", line))
+        .join("\n");
+      const text = warning
+        ? `${styledOutput}${styledOutput ? "\n\n" : ""}${warning}`
+        : styledOutput;
+
+      return new Text(text, 0, 0);
     },
   });
 }
