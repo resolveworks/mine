@@ -3,9 +3,10 @@ import {
   DEFAULT_MAX_LINES,
   truncateHead,
   type ExtensionAPI,
+  getMarkdownTheme,
   withFileMutationQueue,
 } from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
+import { Container, Markdown, Spacer, Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { spawn, type ChildProcess } from "node:child_process";
 import { randomBytes } from "node:crypto";
@@ -185,15 +186,16 @@ export default function (pi: ExtensionAPI) {
         warning = theme.fg("warning", notice);
       }
 
-      const styledOutput = output
-        .split("\n")
-        .map((line) => theme.fg("toolOutput", line))
-        .join("\n");
-      const text = warning
-        ? `${styledOutput}${styledOutput ? "\n\n" : ""}${warning}`
-        : styledOutput;
-
-      return new Text(text, 0, 0);
+      const container = new Container();
+      container.addChild(new Spacer(1));
+      if (output) {
+        container.addChild(new Markdown(output, 0, 0, getMarkdownTheme()));
+      }
+      if (warning) {
+        if (output) container.addChild(new Spacer(1));
+        container.addChild(new Text(warning, 0, 0));
+      }
+      return container;
     },
   });
 }
