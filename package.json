@@ -3,9 +3,9 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "defuddle": "^0.19.1",
+    "defuddle": "^0.19.2",
     "linkedom": "^0.18.13",
-    "playwright": "^1.61.1"
+    "playwright": "^1.62.0"
   },
   "pi": {
     "extensions": [
