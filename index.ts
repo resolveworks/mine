@@ -43,7 +43,7 @@ function moreLinesHint(remaining: number, theme: Theme): string {
 }
 
 /**
- * Connect to the obscura CDP server (compose.yaml). One connection per fetch:
+ * Connect to the obscura CDP server (obscura.container). One connection per fetch:
  * cheap handshake, and it self-heals if the server was restarted.
  */
 async function connectBrowser(): Promise<import("playwright-core").Browser> {
@@ -54,7 +54,7 @@ async function connectBrowser(): Promise<import("playwright-core").Browser> {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(
       `Cannot reach the obscura CDP server at ${CDP_ENDPOINT} (${message}). ` +
-        "Start it with `podman compose up -d` from the mine checkout.",
+        "Start it with `systemctl --user start obscura.service`.",
     );
   }
 }

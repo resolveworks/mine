@@ -12,26 +12,40 @@ A [pi](https://github.com/earendil-works/pi) extension that adds a `web_fetch` t
 
 You need on your system:
 
-- **podman** with a compose provider (`podman-compose`), for the obscura server
+- **podman** 5.0 or newer, for the obscura server
 - **Node.js** 22.18 or newer and **pnpm** 11.3.0 (development only)
-
-No Chrome, Xvfb, or display server is needed — obscura runs as a container and binds to loopback only.
 
 ## Start the obscura server
 
-From the mine checkout (or wherever `compose.yaml` lives):
+The server runs as a rootless podman container managed by a user systemd quadlet
+unit. Deploy it from the mine checkout:
 
 ```bash
-podman compose up -d
+install -d -m 0700 "$HOME/.config/containers/systemd"
+ln -sT "$PWD/obscura.container" "$HOME/.config/containers/systemd/obscura.container"
+systemctl --user daemon-reload
+systemctl --user start obscura.service
 ```
 
-This starts obscura with stealth mode enabled and persistent cookie/localStorage storage in the `obscura-data` volume. Verify it is up:
+The unit starts with your session, restarts on failure, and pulls the image on
+every start. Obscura runs with stealth mode enabled and persistent
+cookie/localStorage storage in the `obscura-data` volume. Verify it is up:
 
 ```bash
 curl -s http://127.0.0.1:9222/json/version
 ```
 
 The endpoint can be overridden with the `MINE_CDP_ENDPOINT` environment variable.
+
+## Remove the obscura server
+
+```bash
+systemctl --user stop obscura.service
+rm -- "$HOME/.config/containers/systemd/obscura.container"
+systemctl --user daemon-reload
+podman volume rm obscura-data
+podman image rm docker.io/h4ckf0r0day/obscura:latest
+```
 
 ## Install
 
