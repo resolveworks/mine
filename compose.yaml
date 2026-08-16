@@ -1,0 +1,14 @@
+services:
+  obscura:
+    image: docker.io/h4ckf0r0day/obscura:latest
+    container_name: obscura
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9222:9222"
+    volumes:
+      - obscura-data:/data
+    # --host 0.0.0.0 is required inside the container; the port mapping keeps it loopback-only.
+    command: ["serve", "--host", "0.0.0.0", "--storage-dir", "/data", "--stealth"]
+
+volumes:
+  obscura-data:

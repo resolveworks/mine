@@ -1,42 +1,37 @@
 # mine
 
-A [pi](https://github.com/earendil-works/pi) extension that adds a `web_fetch` tool for fetching web pages as clean markdown. It launches Chrome via [Playwright](https://playwright.dev) on a virtual X display ([Xvfb](https://www.x.org/releases/X11R7.7/doc/man/man1/Xvfb.1.xhtml)).
+A [pi](https://github.com/earendil-works/pi) extension that adds a `web_fetch` tool for fetching web pages as clean markdown. Pages are rendered by [obscura](https://github.com/h4ckf0r0day/obscura), a CDP-compatible headless browser engine written in Rust, driven over the Chrome DevTools Protocol via [Playwright](https://playwright.dev).
 
 ## How it works
 
-1. Opens the target URL in a headed Chrome instance
-2. Waits for the page's `load` event (JS-heavy SPAs work fine)
-3. Cookie consent banners are dismissed by [I Still Don't Care About Cookies](https://github.com/OhMyGuus/I-Still-Dont-Care-About-Cookies), force-installed via Chrome enterprise policy (see below)
-4. Extracts the page content and converts it to clean markdown using [Defuddle](https://github.com/kepano/defuddle)
+1. Connects to the obscura CDP server on `ws://127.0.0.1:9222`
+2. Opens the target URL and waits for the page's `load` event (JS-heavy SPAs work fine)
+3. Extracts the page content and converts it to clean markdown using [Defuddle](https://github.com/kepano/defuddle), which ships site-specific extractors for many popular sites
 
 ## Requirements
 
-mine renders Chrome to a virtual X display so its window never appears on screen. **Linux only.** You need on your system:
+You need on your system:
 
-- **Google Chrome** — Playwright launches the system Chrome (`channel: "chrome"`). Install from [google.com/chrome](https://www.google.com/chrome/) or via your package manager.
-- **Xvfb** — virtual framebuffer X server.
+- **podman** with a compose provider (`podman-compose`), for the obscura server
+- **Node.js** 22.18 or newer and **pnpm** 11.3.0 (development only)
 
-| Distro | Xvfb install |
-|---|---|
-| Arch | `sudo pacman -S xorg-server-xvfb` |
-| Debian/Ubuntu | `sudo apt install xvfb` |
-| Fedora/RHEL | `sudo dnf install xorg-x11-server-Xvfb` |
+No Chrome, Xvfb, or display server is needed — obscura runs as a container and binds to loopback only.
 
-The extension manages the Xvfb process itself — start, display assignment, and shutdown are all automatic.
+## Start the obscura server
 
-### One-time: force-install the cookie-banner extension
+From the mine checkout (or wherever `compose.yaml` lives):
 
-Drop this JSON into `/etc/opt/chrome/policies/managed/idcac.json` (requires sudo):
-
-```json
-{
-  "ExtensionInstallForcelist": [
-    "edibdbjcniadpccecjdfdjjppcpchdlm"
-  ]
-}
+```bash
+podman compose up -d
 ```
 
-Chrome reads the policy on launch and pulls [I Still Don't Care About Cookies](https://chromewebstore.google.com/detail/i-still-dont-care-about-c/edibdbjcniadpccecjdfdjjppcpchdlm) from the Chrome Web Store. The policy is system-wide, so every Chrome instance on the machine will have the extension active.
+This starts obscura with stealth mode enabled and persistent cookie/localStorage storage in the `obscura-data` volume. Verify it is up:
+
+```bash
+curl -s http://127.0.0.1:9222/json/version
+```
+
+The endpoint can be overridden with the `MINE_CDP_ENDPOINT` environment variable.
 
 ## Install
 

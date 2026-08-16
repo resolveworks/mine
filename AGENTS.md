@@ -1,6 +1,6 @@
 # mine
 
-mine is a [pi](https://github.com/earendil-works/pi) extension that adds a `web_fetch` tool: it renders pages in a real (headless-X11) Chrome via Playwright and returns clean markdown via Defuddle. See the README for setup and usage.
+mine is a [pi](https://github.com/earendil-works/pi) extension that adds a `web_fetch` tool: it renders pages in [obscura](https://github.com/h4ckf0r0day/obscura) (CDP-compatible headless browser, run via `compose.yaml` under podman) and returns clean markdown via Defuddle. See the README for setup and usage.
 
 Everything lives in `index.ts` — start at the default export.
 

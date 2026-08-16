@@ -1,7 +1,7 @@
 {
   "name": "mine",
   "version": "0.0.0",
-  "description": "Web fetch for Pi — real-browser page rendering to clean markdown via Playwright and Defuddle",
+  "description": "Web fetch for Pi — real-browser page rendering via obscura (CDP) to clean markdown via Playwright and Defuddle",
   "type": "module",
   "packageManager": "pnpm@11.3.0",
   "engines": {
@@ -24,7 +24,7 @@
   "dependencies": {
     "defuddle": "^0.19.2",
     "linkedom": "^0.18.13",
-    "playwright": "^1.62.0",
+    "playwright-core": "^1.62.0",
     "typebox": "^1.1.37"
   },
   "peerDependencies": {

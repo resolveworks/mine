@@ -1,4 +1,3 @@
-import { type ChildProcess, spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -16,13 +15,14 @@ import {
 import { Container, Markdown, Spacer, Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 
-let browser: import("playwright").Browser | null = null;
-let xvfb: ChildProcess | null = null;
-let display: string | null = null;
+/** CDP endpoint of the obscura server. Override with MINE_CDP_ENDPOINT. */
+const CDP_ENDPOINT = process.env.MINE_CDP_ENDPOINT ?? "ws://127.0.0.1:9222";
+
+/** Navigation timeout per fetch. */
+const NAVIGATION_TIMEOUT_MS = 30_000;
 
 interface WebFetchDetails {
   truncated: boolean;
-  length: number;
   fullOutputPath?: string;
 }
 
@@ -42,74 +42,28 @@ function moreLinesHint(remaining: number, theme: Theme): string {
   );
 }
 
-async function startXvfb(): Promise<string> {
-  if (process.platform !== "linux") {
-    throw new Error("mine requires Linux (uses Xvfb to render Chrome on a virtual display).");
-  }
-  return new Promise((resolve, reject) => {
-    const child = spawn(
-      "Xvfb",
-      ["-displayfd", "1", "-screen", "0", "1920x1080x24", "-nolisten", "tcp"],
-      { stdio: ["ignore", "pipe", "pipe"] },
+/**
+ * Connect to the obscura CDP server (compose.yaml). One connection per fetch:
+ * cheap handshake, and it self-heals if the server was restarted.
+ */
+async function connectBrowser(): Promise<import("playwright-core").Browser> {
+  const { chromium } = await import("playwright-core");
+  try {
+    return await chromium.connectOverCDP(CDP_ENDPOINT);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `Cannot reach the obscura CDP server at ${CDP_ENDPOINT} (${message}). ` +
+        "Start it with `podman compose up -d` from the mine checkout.",
     );
-    let buf = "";
-    const onExit = (code: number | null) =>
-      reject(
-        new Error(
-          `Xvfb exited (${code}) before reporting a display. Install xorg-server-xvfb (Arch) or xvfb (Debian/Ubuntu/Fedora).`,
-        ),
-      );
-    child.once("error", (err) =>
-      reject(
-        new Error(
-          `Failed to spawn Xvfb: ${err.message}. Install xorg-server-xvfb (Arch) or xvfb (Debian/Ubuntu/Fedora).`,
-        ),
-      ),
-    );
-    child.once("exit", onExit);
-    child.stdout?.on("data", (chunk: Buffer) => {
-      buf += chunk.toString();
-      const m = buf.match(/(\d+)\s/);
-      if (m) {
-        child.off("exit", onExit);
-        xvfb = child;
-        resolve(`:${m[1]}`);
-      }
-    });
-  });
-}
-
-async function getBrowser() {
-  if (!browser) {
-    if (!display) display = await startXvfb();
-    const { chromium } = await import("playwright");
-    browser = await chromium.launch({
-      channel: "chrome",
-      headless: false,
-      args: ["--ozone-platform=x11", "--disable-blink-features=AutomationControlled"],
-      env: { ...process.env, DISPLAY: display } as NodeJS.ProcessEnv,
-    });
   }
-  return browser;
 }
 
 export default function (pi: ExtensionAPI) {
-  pi.on("session_shutdown", async () => {
-    if (browser) {
-      await browser.close();
-      browser = null;
-    }
-    if (xvfb) {
-      xvfb.kill("SIGTERM");
-      xvfb = null;
-      display = null;
-    }
-  });
-
   pi.registerTool({
     name: "web_fetch",
     label: "Web Fetch",
-    description: `Fetch a webpage and return its main readable content as clean markdown. Uses a real browser to handle JavaScript-rendered pages. Output is limited to ${DEFAULT_MAX_BYTES / 1024}KB or ${DEFAULT_MAX_LINES} lines (whichever is hit first); full content is saved to a temporary file when truncated.`,
+    description: `Fetch a webpage and return its main readable content as clean markdown. Renders pages with obscura (CDP-compatible headless browser) to handle JavaScript-rendered pages. Output is limited to ${DEFAULT_MAX_BYTES / 1024}KB or ${DEFAULT_MAX_LINES} lines (whichever is hit first); full content is saved to a temporary file when truncated.`,
     promptSnippet: "Fetch and read the content of a web page as clean markdown",
     promptGuidelines: [
       "Use web_fetch when the user asks you to read, fetch, or look up the content of a specific URL.",
@@ -123,11 +77,10 @@ export default function (pi: ExtensionAPI) {
       return new Text(text, 0, 0);
     },
     async execute(_toolCallId, params, signal, _onUpdate, _ctx) {
-      const { url } = params as { url: string };
+      const { url } = params;
 
-      const pw = await getBrowser();
-      const context = await pw.newContext();
-      const page = await context.newPage();
+      const browser = await connectBrowser();
+      const page = await browser.newPage();
 
       // Close page on abort
       const onAbort = () => page.close().catch(() => {});
@@ -136,7 +89,7 @@ export default function (pi: ExtensionAPI) {
       try {
         await page.goto(url, {
           waitUntil: "load",
-          timeout: 30000,
+          timeout: NAVIGATION_TIMEOUT_MS,
         });
 
         const html = await page.content();
@@ -152,7 +105,6 @@ export default function (pi: ExtensionAPI) {
         });
         const details: WebFetchDetails = {
           truncated: truncation.truncated,
-          length: markdown.length,
         };
         let output = markdown;
 
@@ -176,7 +128,9 @@ export default function (pi: ExtensionAPI) {
         throw new Error(`Failed to fetch ${url}: ${message}`);
       } finally {
         signal?.removeEventListener("abort", onAbort);
-        await context.close();
+        await page.close().catch(() => {});
+        // Disconnects from the CDP server; the server itself keeps running.
+        await browser.close().catch(() => {});
       }
     },
     renderResult(result, options, theme, context) {

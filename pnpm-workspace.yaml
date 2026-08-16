@@ -1,4 +1,3 @@
 allowBuilds:
   "@google/genai": true
-  playwright: true
   protobufjs: true
