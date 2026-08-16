@@ -58,6 +58,14 @@ Once installed, the `web_fetch` tool is available to pi:
 > Fetch the content of https://example.com
 ```
 
-## License
+## Development
 
-MIT
+Requires Node.js 22.18 or newer and pnpm 11.3.0.
+
+```sh
+pnpm install --frozen-lockfile
+pnpm typecheck
+pnpm format:check
+```
+
+Use `pnpm format` to apply formatting.
