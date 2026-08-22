@@ -28,8 +28,7 @@ systemctl --user start obscura.service
 ```
 
 The unit starts with your session, restarts on failure, and pulls the image on
-every start. Obscura runs with stealth mode enabled and persistent
-cookie/localStorage storage in the `obscura-data` volume. Verify it is up:
+every start. Obscura runs with stealth mode enabled. Verify it is up:
 
 ```bash
 curl -s http://127.0.0.1:9222/json/version
@@ -43,7 +42,6 @@ The endpoint can be overridden with the `MINE_CDP_ENDPOINT` environment variable
 systemctl --user stop obscura.service
 rm -- "$HOME/.config/containers/systemd/obscura.container"
 systemctl --user daemon-reload
-podman volume rm obscura-data
 podman image rm docker.io/h4ckf0r0day/obscura:latest
 ```
 

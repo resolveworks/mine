@@ -19,7 +19,7 @@ import { Type } from "typebox";
 const CDP_ENDPOINT = process.env.MINE_CDP_ENDPOINT ?? "ws://127.0.0.1:9222";
 
 /** Navigation timeout per fetch. */
-const NAVIGATION_TIMEOUT_MS = 30_000;
+const NAVIGATION_TIMEOUT_MS = 60_000;
 
 interface WebFetchDetails {
   truncated: boolean;
