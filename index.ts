@@ -15,8 +15,26 @@ import {
 import { Container, Markdown, Spacer, Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 
-/** CDP endpoint of the obscura server. Override with MINE_CDP_ENDPOINT. */
-const CDP_ENDPOINT = process.env.MINE_CDP_ENDPOINT ?? "ws://127.0.0.1:9222";
+/**
+ * WebSocket endpoint of the patchright browser server (mine-browser.container).
+ * Override with MINE_BROWSER_ENDPOINT.
+ */
+const BROWSER_ENDPOINT = process.env.MINE_BROWSER_ENDPOINT ?? "ws://127.0.0.1:9222";
+
+/** Connect timeout; playwright's connect() defaults to 0 (no timeout). */
+const CONNECT_TIMEOUT_MS = 10_000;
+
+/**
+ * Launch options sent to the server via the `x-playwright-launch-options`
+ * header. Branded Chrome headed under Xvfb is patchright's recommended stealth
+ * setup. These are server-safe options, so the run-server needs no --unsafe
+ * flag.
+ */
+const LAUNCH_OPTIONS = {
+  channel: "chrome",
+  chromiumSandbox: true,
+  headless: false,
+} as const;
 
 /** Navigation timeout per fetch. */
 const NAVIGATION_TIMEOUT_MS = 60_000;
@@ -43,18 +61,25 @@ function moreLinesHint(remaining: number, theme: Theme): string {
 }
 
 /**
- * Connect to the obscura CDP server (obscura.container). One connection per fetch:
- * cheap handshake, and it self-heals if the server was restarted.
+ * Connect to the patchright run-server (mine-browser.container). One connection
+ * per fetch: the server launches a fresh headed Chrome under Xvfb (patchright's
+ * stealth patches apply, since its patched driver launches the browser), and the
+ * handshake self-heals if the server was restarted.
  */
 async function connectBrowser(): Promise<import("playwright-core").Browser> {
   const { chromium } = await import("playwright-core");
   try {
-    return await chromium.connectOverCDP(CDP_ENDPOINT);
+    return await chromium.connect(BROWSER_ENDPOINT, {
+      timeout: CONNECT_TIMEOUT_MS,
+      headers: {
+        "x-playwright-launch-options": JSON.stringify(LAUNCH_OPTIONS),
+      },
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(
-      `Cannot reach the obscura CDP server at ${CDP_ENDPOINT} (${message}). ` +
-        "Start it with `systemctl --user start obscura.service`.",
+      `Cannot reach the mine browser server at ${BROWSER_ENDPOINT} (${message}). ` +
+        "Start it with `systemctl --user start mine-browser.service`.",
     );
   }
 }
@@ -63,7 +88,7 @@ export default function (pi: ExtensionAPI) {
   pi.registerTool({
     name: "web_fetch",
     label: "Web Fetch",
-    description: `Fetch a webpage and return its main readable content as clean markdown. Renders pages with obscura (CDP-compatible headless browser) to handle JavaScript-rendered pages. Output is limited to ${DEFAULT_MAX_BYTES / 1024}KB or ${DEFAULT_MAX_LINES} lines (whichever is hit first); full content is saved to a temporary file when truncated.`,
+    description: `Fetch a webpage and return its main readable content as clean markdown. Renders pages with a stealth-patched Playwright server (patchright driving branded Google Chrome under xvfb) to handle JavaScript-rendered pages. Output is limited to ${DEFAULT_MAX_BYTES / 1024}KB or ${DEFAULT_MAX_LINES} lines (whichever is hit first); full content is saved to a temporary file when truncated.`,
     promptSnippet: "Fetch and read the content of a web page as clean markdown",
     promptGuidelines: [
       "Use web_fetch when the user asks you to read, fetch, or look up the content of a specific URL.",
@@ -80,7 +105,8 @@ export default function (pi: ExtensionAPI) {
       const { url } = params;
 
       const browser = await connectBrowser();
-      const page = await browser.newPage();
+      // Patchright recommends the host display's native viewport for stealth.
+      const page = await browser.newPage({ viewport: null });
 
       // Close page on abort
       const onAbort = () => page.close().catch(() => {});
@@ -90,6 +116,10 @@ export default function (pi: ExtensionAPI) {
         await page.goto(url, {
           waitUntil: "load",
           timeout: NAVIGATION_TIMEOUT_MS,
+          // Pass pi's abort signal so Escape cancels the navigation itself;
+          // closing the page alone does not interrupt a pending goto (see
+          // abort listener above, which covers the post-navigation phases).
+          signal,
         });
 
         const html = await page.content();
@@ -129,7 +159,7 @@ export default function (pi: ExtensionAPI) {
       } finally {
         signal?.removeEventListener("abort", onAbort);
         await page.close().catch(() => {});
-        // Disconnects from the CDP server; the server itself keeps running.
+        // Disconnect from the browser server; the server itself keeps running.
         await browser.close().catch(() => {});
       }
     },

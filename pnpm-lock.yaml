@@ -15,7 +15,7 @@ importers:
         specifier: ^0.18.13
         version: 0.18.13
       playwright-core:
-        specifier: ^1.62.0
+        specifier: ~1.62.0
         version: 1.62.0
       typebox:
         specifier: ^1.1.37

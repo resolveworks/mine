@@ -1,65 +1,41 @@
 # mine
 
-A [pi](https://github.com/earendil-works/pi) extension that adds a `web_fetch` tool for fetching web pages as clean markdown. Pages are rendered by [obscura](https://github.com/h4ckf0r0day/obscura), a CDP-compatible headless browser engine written in Rust, driven over the Chrome DevTools Protocol via [Playwright](https://playwright.dev).
+A [pi](https://github.com/earendil-works/pi) extension that renders web pages in stealth-patched Chrome and returns their main content as clean markdown.
 
-## How it works
+## Browser service
 
-1. Connects to the obscura CDP server on `ws://127.0.0.1:9222`
-2. Opens the target URL and waits for the page's `load` event (JS-heavy SPAs work fine)
-3. Extracts the page content and converts it to clean markdown using [Defuddle](https://github.com/kepano/defuddle), which ships site-specific extractors for many popular sites
+The browser runs as a rootless Podman container managed by user systemd. Install its Quadlet:
 
-## Requirements
-
-You need on your system:
-
-- **podman** 5.0 or newer, for the obscura server
-- **Node.js** 22.18 or newer and **pnpm** 11.3.0 (development only)
-
-## Start the obscura server
-
-The server runs as a rootless podman container managed by a user systemd quadlet
-unit. Deploy it from the mine checkout:
-
-```bash
+```sh
 install -d -m 0700 "$HOME/.config/containers/systemd"
-ln -sT "$PWD/obscura.container" "$HOME/.config/containers/systemd/obscura.container"
+ln -sT "$PWD/mine-browser.container" "$HOME/.config/containers/systemd/mine-browser.container"
 systemctl --user daemon-reload
-systemctl --user start obscura.service
+systemctl --user start mine-browser.service
 ```
 
-The unit starts with your session, restarts on failure, and pulls the image on
-every start. Obscura runs with stealth mode enabled. Verify it is up:
+This requires Podman 5.0 or newer. The service listens on `ws://127.0.0.1:9222`. Set `MINE_BROWSER_ENDPOINT` to use another endpoint.
 
-```bash
-curl -s http://127.0.0.1:9222/json/version
-```
+To remove it:
 
-The endpoint can be overridden with the `MINE_CDP_ENDPOINT` environment variable.
-
-## Remove the obscura server
-
-```bash
-systemctl --user stop obscura.service
-rm -- "$HOME/.config/containers/systemd/obscura.container"
+```sh
+systemctl --user stop mine-browser.service
+rm -- "$HOME/.config/containers/systemd/mine-browser.container"
 systemctl --user daemon-reload
-podman image rm docker.io/h4ckf0r0day/obscura:latest
 ```
 
 ## Install
 
-```bash
+```sh
 pi install git:github.com/resolveworks/mine
 ```
 
-For project-local install:
+For a project-local install:
 
-```bash
+```sh
 pi install git:github.com/resolveworks/mine -l
 ```
 
 ## Usage
-
-Once installed, the `web_fetch` tool is available to pi:
 
 ```
 > Fetch the content of https://example.com
@@ -74,5 +50,3 @@ pnpm install --frozen-lockfile
 pnpm typecheck
 pnpm format:check
 ```
-
-Use `pnpm format` to apply formatting.
