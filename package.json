@@ -1,6 +1,6 @@
 {
   "name": "mine",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Web fetch for Pi — stealth-rendered pages via patchright-driven branded Chrome (headed, xvfb) to clean markdown via Playwright and Defuddle",
   "type": "module",
   "packageManager": "pnpm@11.3.0",
