@@ -19,5 +19,9 @@ RUN mkdir -p /etc/opt/chrome/policies/managed && \
 USER pwuser
 
 EXPOSE 9222
+
+COPY launch.json /etc/mine-browser/launch.json
+
 CMD ["xvfb-run", "--auto-servernum", "--server-args=-screen 0 1920x1080x24", \
-     "patchright", "run-server", "--port", "9222", "--host", "0.0.0.0"]
+     "patchright", "launch-server", "--browser", "chromium", \
+     "--config", "/etc/mine-browser/launch.json"]

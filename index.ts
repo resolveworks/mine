@@ -24,18 +24,6 @@ const BROWSER_ENDPOINT = process.env.MINE_BROWSER_ENDPOINT ?? "ws://127.0.0.1:92
 /** Connect timeout; playwright's connect() defaults to 0 (no timeout). */
 const CONNECT_TIMEOUT_MS = 10_000;
 
-/**
- * Launch options sent to the server via the `x-playwright-launch-options`
- * header. Branded Chrome headed under Xvfb is patchright's recommended stealth
- * setup. These are server-safe options, so the run-server needs no --unsafe
- * flag.
- */
-const LAUNCH_OPTIONS = {
-  channel: "chrome",
-  chromiumSandbox: true,
-  headless: false,
-} as const;
-
 /** Navigation timeout per fetch. */
 const NAVIGATION_TIMEOUT_MS = 60_000;
 
@@ -60,21 +48,10 @@ function moreLinesHint(remaining: number, theme: Theme): string {
   );
 }
 
-/**
- * Connect to the patchright run-server (mine-browser.container). One connection
- * per fetch: the server launches a fresh headed Chrome under Xvfb (patchright's
- * stealth patches apply, since its patched driver launches the browser), and the
- * handshake self-heals if the server was restarted.
- */
 async function connectBrowser(): Promise<import("playwright-core").Browser> {
   const { chromium } = await import("playwright-core");
   try {
-    return await chromium.connect(BROWSER_ENDPOINT, {
-      timeout: CONNECT_TIMEOUT_MS,
-      headers: {
-        "x-playwright-launch-options": JSON.stringify(LAUNCH_OPTIONS),
-      },
-    });
+    return await chromium.connect(BROWSER_ENDPOINT, { timeout: CONNECT_TIMEOUT_MS });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(
