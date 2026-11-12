@@ -1,6 +1,6 @@
 # mine
 
-A [pi](https://github.com/earendil-works/pi) extension that renders web pages in stealth-patched Chrome and returns their main content as clean markdown.
+A `web_fetch` package for [pi](https://github.com/earendil-works/pi) and Key that renders web pages in stealth-patched Chrome and returns their main content as clean markdown.
 
 ## Browser service
 
@@ -56,9 +56,15 @@ const markdown = await fetchMarkdown("https://example.com", { signal });
 Options: `endpoint` (default `MINE_BROWSER_ENDPOINT` or
 `ws://127.0.0.1:9222`), `connectTimeoutMs` (10s), `navigationTimeoutMs`
 (60s), and `signal`. It returns the untruncated markdown; bounding, spilling
-to a file, and presentation belong to the caller. The pi extension in
-`index.ts` is one such caller, and this is the seam a pi-durable extension
-(`defineTool` in a host's registry) would build on.
+to a file, and presentation belong to the caller.
+
+The Pi adapter in [`index.ts`](index.ts) bounds and renders that markdown. The
+Key adapter in [`key.ts`](key.ts) exports `Fetch` for a durable registry and
+lets durable output bounds handle the result:
+
+```ts
+import { Fetch } from "mine/key";
+```
 
 ## Development
 
@@ -66,6 +72,10 @@ Requires Node.js 22.18 or newer and pnpm 11.3.0.
 
 ```sh
 pnpm install --frozen-lockfile
+pnpm build
 pnpm typecheck
 pnpm format:check
 ```
+
+`pnpm build` compiles `core.ts`, `index.ts`, and `key.ts` into `dist/` with
+declarations; the package exports and Pi manifest load those artifacts.

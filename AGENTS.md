@@ -1,8 +1,8 @@
 # mine
 
-mine is a [pi](https://github.com/earendil-works/pi) extension that adds a `web_fetch` tool. It renders pages with patchright driving headed Google Chrome under Xvfb in a rootless Podman container, then returns clean markdown via Defuddle. GitHub releases publish the browser image to GHCR, and `mine-browser.container` runs it under user systemd. See the README for setup and usage.
+mine is a `web_fetch` package for [pi](https://github.com/earendil-works/pi) and Key. It renders pages with patchright driving headed Google Chrome under Xvfb in a rootless Podman container, then returns clean markdown via Defuddle. GitHub releases publish the browser image to GHCR, and `mine-browser.container` runs it under user systemd. See the README for setup and usage.
 
-Everything lives in `index.ts` — start at the default export — and `core.ts`, the host-agnostic fetch library (`fetchMarkdown`) that `index.ts` adapts into the `web_fetch` tool. Truncation, spill files, and rendering stay in `index.ts`; `core.ts` returns the raw markdown.
+`core.ts` is the host-agnostic fetch library (`fetchMarkdown`). `index.ts` adapts it to Pi and keeps Pi's truncation, spill files, and rendering. `key.ts` is the durable Key extension, exporting `Fetch` and relying on durable output bounds. `tsconfig.build.json` emits the compiled JS and declarations under `dist/`, which the package exports and Pi manifest load.
 
 ## Development
 
@@ -10,11 +10,12 @@ Requires Node.js 22.18 or newer and pnpm 11.3.0.
 
 ```sh
 pnpm install --frozen-lockfile
+pnpm build
 pnpm typecheck
 pnpm format:check
 ```
 
-Use `pnpm format` to apply formatting. Run the typecheck and formatting check before finishing a change; the pre-commit hook enforces both.
+Use `pnpm format` to apply formatting. Run the build, typecheck, and formatting check before finishing a change; the pre-commit hook enforces typecheck and formatting. `pnpm build` regenerates the committed `dist/` artifacts.
 
 ## Version pinning
 
