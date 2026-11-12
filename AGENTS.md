@@ -2,7 +2,7 @@
 
 mine is a [pi](https://github.com/earendil-works/pi) extension that adds a `web_fetch` tool. It renders pages with patchright driving headed Google Chrome under Xvfb in a rootless Podman container, then returns clean markdown via Defuddle. GitHub releases publish the browser image to GHCR, and `mine-browser.container` runs it under user systemd. See the README for setup and usage.
 
-Everything lives in `index.ts` — start at the default export.
+Everything lives in `index.ts` — start at the default export — and `core.ts`, the host-agnostic fetch library (`fetchMarkdown`) that `index.ts` adapts into the `web_fetch` tool. Truncation, spill files, and rendering stay in `index.ts`; `core.ts` returns the raw markdown.
 
 ## Development
 

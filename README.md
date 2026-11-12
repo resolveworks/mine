@@ -41,6 +41,25 @@ pi install git:github.com/resolveworks/mine -l
 > Fetch the content of https://example.com
 ```
 
+## Library
+
+The fetch pipeline — connect to the browser server, navigate, extract the
+readable content with Defuddle — lives in [`core.ts`](core.ts) and is
+importable as `mine/core`:
+
+```ts
+import { fetchMarkdown } from "mine/core";
+
+const markdown = await fetchMarkdown("https://example.com", { signal });
+```
+
+Options: `endpoint` (default `MINE_BROWSER_ENDPOINT` or
+`ws://127.0.0.1:9222`), `connectTimeoutMs` (10s), `navigationTimeoutMs`
+(60s), and `signal`. It returns the untruncated markdown; bounding, spilling
+to a file, and presentation belong to the caller. The pi extension in
+`index.ts` is one such caller, and this is the seam a pi-durable extension
+(`defineTool` in a host's registry) would build on.
+
 ## Development
 
 Requires Node.js 22.18 or newer and pnpm 11.3.0.

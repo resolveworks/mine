@@ -14,18 +14,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import { Container, Markdown, Spacer, Text } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
-
-/**
- * WebSocket endpoint of the patchright browser server (mine-browser.container).
- * Override with MINE_BROWSER_ENDPOINT.
- */
-const BROWSER_ENDPOINT = process.env.MINE_BROWSER_ENDPOINT ?? "ws://127.0.0.1:9222";
-
-/** Connect timeout; playwright's connect() defaults to 0 (no timeout). */
-const CONNECT_TIMEOUT_MS = 10_000;
-
-/** Navigation timeout per fetch. */
-const NAVIGATION_TIMEOUT_MS = 60_000;
+import { fetchMarkdown } from "./core.ts";
 
 interface WebFetchDetails {
   truncated: boolean;
@@ -48,19 +37,6 @@ function moreLinesHint(remaining: number, theme: Theme): string {
   );
 }
 
-async function connectBrowser(): Promise<import("playwright-core").Browser> {
-  const { chromium } = await import("playwright-core");
-  try {
-    return await chromium.connect(BROWSER_ENDPOINT, { timeout: CONNECT_TIMEOUT_MS });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(
-      `Cannot reach the mine browser server at ${BROWSER_ENDPOINT} (${message}). ` +
-        "Start it with `systemctl --user start mine-browser.service`.",
-    );
-  }
-}
-
 export default function (pi: ExtensionAPI) {
   pi.registerTool({
     name: "web_fetch",
@@ -81,64 +57,31 @@ export default function (pi: ExtensionAPI) {
     async execute(_toolCallId, params, signal, _onUpdate, _ctx) {
       const { url } = params;
 
-      const browser = await connectBrowser();
-      // Patchright recommends the host display's native viewport for stealth.
-      const page = await browser.newPage({ viewport: null });
+      const markdown = await fetchMarkdown(url, { signal });
+      const truncation = truncateHead(markdown, {
+        maxBytes: DEFAULT_MAX_BYTES,
+        maxLines: DEFAULT_MAX_LINES,
+      });
+      const details: WebFetchDetails = {
+        truncated: truncation.truncated,
+      };
+      let output = markdown;
 
-      // Close page on abort
-      const onAbort = () => page.close().catch(() => {});
-      signal?.addEventListener("abort", onAbort);
+      if (truncation.truncated) {
+        const id = randomBytes(8).toString("hex");
+        const fullOutputPath = join(tmpdir(), `pi-mine-${id}.md`);
+        await withFileMutationQueue(fullOutputPath, () =>
+          writeFile(fullOutputPath, markdown, "utf8"),
+        );
 
-      try {
-        await page.goto(url, {
-          waitUntil: "load",
-          timeout: NAVIGATION_TIMEOUT_MS,
-          // Pass pi's abort signal so Escape cancels the navigation itself;
-          // closing the page alone does not interrupt a pending goto (see
-          // abort listener above, which covers the post-navigation phases).
-          signal,
-        });
-
-        const html = await page.content();
-        const { parseHTML } = await import("linkedom");
-        const { Defuddle } = await import("defuddle/node");
-
-        const { document } = parseHTML(html);
-        const result = await Defuddle(document, url, { markdown: true });
-        const markdown = result.content;
-        const truncation = truncateHead(markdown, {
-          maxBytes: DEFAULT_MAX_BYTES,
-          maxLines: DEFAULT_MAX_LINES,
-        });
-        const details: WebFetchDetails = {
-          truncated: truncation.truncated,
-        };
-        let output = markdown;
-
-        if (truncation.truncated) {
-          const id = randomBytes(8).toString("hex");
-          const fullOutputPath = join(tmpdir(), `pi-mine-${id}.md`);
-          await withFileMutationQueue(fullOutputPath, () =>
-            writeFile(fullOutputPath, markdown, "utf8"),
-          );
-
-          details.fullOutputPath = fullOutputPath;
-          output = `${truncation.content}\n\n${getTruncationNotice(fullOutputPath)}`;
-        }
-
-        return {
-          content: [{ type: "text", text: output }],
-          details,
-        };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        throw new Error(`Failed to fetch ${url}: ${message}`);
-      } finally {
-        signal?.removeEventListener("abort", onAbort);
-        await page.close().catch(() => {});
-        // Disconnect from the browser server; the server itself keeps running.
-        await browser.close().catch(() => {});
+        details.fullOutputPath = fullOutputPath;
+        output = `${truncation.content}\n\n${getTruncationNotice(fullOutputPath)}`;
       }
+
+      return {
+        content: [{ type: "text", text: output }],
+        details,
+      };
     },
     renderResult(result, options, theme, context) {
       const details = result.details as WebFetchDetails | undefined;
